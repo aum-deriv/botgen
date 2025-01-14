@@ -24,7 +24,7 @@ class StrategyGenerator:
     def generate_trade_definition(self, market="synthetic_index", submarket="random_index", symbol="1HZ10V", duration=1, stake=1):
         """Generate the trade definition section with required hierarchy and trade options"""
         return f'''
-  <block type="trade_definition" id="trade_def_main" deletable="false" x="0" y="0">
+  <block type="trade_definition" id="trade_def_main" x="0" y="0">
     <statement name="TRADE_OPTIONS">
       <block type="trade_definition_market" id="market_def" deletable="false" movable="false">
         <field name="MARKET_LIST">{market}</field>
@@ -46,22 +46,6 @@ class StrategyGenerator:
                         <next>
                           <block type="trade_definition_restartonerror" id="error_def" deletable="false" movable="false">
                             <field name="RESTARTONERROR">TRUE</field>
-                            <next>
-                              <block type="trade_definition_tradeoptions" id="tradeoptions_def">
-                                <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
-                                <field name="DURATIONTYPE_LIST">t</field>
-                                <value name="DURATION">
-                                  <shadow type="math_number">
-                                    <field name="NUM">{duration}</field>
-                                  </shadow>
-                                </value>
-                                <value name="AMOUNT">
-                                  <shadow type="math_number">
-                                    <field name="NUM">{stake}</field>
-                                  </shadow>
-                                </value>
-                              </block>
-                            </next>
                           </block>
                         </next>
                       </block>
@@ -72,6 +56,22 @@ class StrategyGenerator:
             </next>
           </block>
         </next>
+      </block>
+    </statement>
+    <statement name="SUBMARKET">
+      <block type="trade_definition_tradeoptions" id="tradeoptions_def">
+        <mutation has_first_barrier="false" has_second_barrier="false" has_prediction="false"></mutation>
+        <field name="DURATIONTYPE_LIST">t</field>
+        <value name="DURATION">
+          <shadow type="math_number">
+            <field name="NUM">{duration}</field>
+          </shadow>
+        </value>
+        <value name="AMOUNT">
+          <shadow type="math_number">
+            <field name="NUM">{stake}</field>
+          </shadow>
+        </value>
       </block>
     </statement>
 '''
@@ -124,32 +124,51 @@ class StrategyGenerator:
   </block>
 '''
 
-    def generate_after_purchase(self, conditions=None):
-        """Generate the after purchase block with trade again logic"""
-        conditions_xml = ""
-        if conditions:
-            conditions_xml = conditions
+    def generate_after_purchase(self, profit_threshold=1000, loss_threshold=500):
+        """Generate the after purchase block with trade again logic including profit and loss thresholds"""
+        conditions = f'''
+          <block type="logic_operation">
+            <field name="OP">AND</field>
+            <value name="A">
+              <block type="logic_compare">
+                <field name="OP">GT</field>
+                <value name="A">
+                  <block type="read_details">
+                    <field name="DETAIL_INDEX">4</field>
+                  </block>
+                </value>
+                <value name="B">
+                  <block type="math_number">
+                    <field name="NUM">-{loss_threshold}</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+            <value name="B">
+              <block type="logic_compare">
+                <field name="OP">LT</field>
+                <value name="A">
+                  <block type="read_details">
+                    <field name="DETAIL_INDEX">4</field>
+                  </block>
+                </value>
+                <value name="B">
+                  <block type="math_number">
+                    <field name="NUM">{profit_threshold}</field>
+                  </block>
+                </value>
+              </block>
+            </value>
+          </block>
+'''
         
         return f'''
   <block type="after_purchase" id="after_purchase">
     <statement name="AFTERPURCHASE_STACK">
       <block type="controls_if" id="trade_again_condition">
+        <mutation else="1"></mutation>
         <value name="IF0">
-          {conditions_xml if conditions_xml else '''
-          <block type="logic_compare">
-            <field name="OP">LT</field>
-            <value name="A">
-              <block type="read_details">
-                <field name="DETAIL_INDEX">4</field>
-              </block>
-            </value>
-            <value name="B">
-              <block type="variables_get">
-                <field name="VAR" id="profit_threshold_var">Profit Threshold</field>
-              </block>
-            </value>
-          </block>
-          '''}
+          {conditions}
         </value>
         <statement name="DO0">
           <block type="trade_again" id="trade_again"></block>
@@ -159,48 +178,16 @@ class StrategyGenerator:
   </block>
 '''
 
-    def create_contract_check(self, result_type="win"):
-        """Create a contract check result block"""
-        return f'''
-          <block type="contract_check_result">
-            <field name="CHECK_RESULT">{result_type}</field>
-          </block>
-'''
-
-    def create_read_details(self, detail_index):
-        """Create a read details block"""
-        return f'''
-          <block type="read_details">
-            <field name="DETAIL_INDEX">{detail_index}</field>
-          </block>
-'''
-
-    def create_purchase(self, contract_type="CALL"):
-        """Create a purchase block"""
-        return f'''
-          <block type="purchase">
-            <field name="PURCHASE_LIST">{contract_type}</field>
-          </block>
-'''
-
-    def create_trade_again(self):
-        """Create a trade again block"""
-        return '''
-          <block type="trade_again"></block>
-'''
-
     def generate_strategy(self, duration=1, stake=1, initial_stake=1, profit_threshold=1000, loss_threshold=500):
         """Generate complete strategy XML with proper structure"""
         # Add standard variables
         self.add_variable("initial_stake_var", "Initial Stake")
-        self.add_variable("current_stake_var", "Current Stake")
         self.add_variable("profit_threshold_var", "Profit Threshold")
         self.add_variable("loss_threshold_var", "Loss Threshold")
         self.add_variable("total_profit_var", "Total Profit")
         
         # Start XML
-        xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<xml xmlns="http://www.w3.org/1999/xhtml" is_dbot="true" collection="false">
+        xml = '''<xml xmlns="http://www.w3.org/1999/xhtml" collection="false" is_dbot="true">
 '''
         
         # Add variables section
@@ -218,7 +205,10 @@ class StrategyGenerator:
         
         # Add before and after purchase blocks
         xml += self.generate_before_purchase()
-        xml += self.generate_after_purchase()
+        xml += self.generate_after_purchase(
+            profit_threshold=profit_threshold,
+            loss_threshold=loss_threshold
+        )
         
         # Close XML
         xml += "</xml>"
