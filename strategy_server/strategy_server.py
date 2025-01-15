@@ -23,8 +23,8 @@ def strategy_prompt(message: str, ctx: Context) -> list[Message]:
 def generate_strategy(prompt: str, ctx: Context) -> str:
     """Generate a trading strategy from description"""
     try:
-        # Parse parameters from prompt
-        params = parser.parse_prompt(prompt)
+        # Parse parameters from prompt using context
+        params = parser.parse_prompt(prompt, ctx)
         
         if not parser.validate_parameters(params):
             error_msg = "Could not extract valid parameters from prompt"
