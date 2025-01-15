@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from strategy_generator import StrategyGenerator
 from strategy_parser import StrategyParser
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Initialize components
 generator = StrategyGenerator()
