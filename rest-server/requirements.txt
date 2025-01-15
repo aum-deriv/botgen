@@ -1,2 +1,2 @@
+flask>=2.0.0
 anthropic>=0.18.1
-mcp>=0.1.0
