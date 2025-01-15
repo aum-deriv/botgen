@@ -1,8 +1,8 @@
 from typing import Dict, Any
-from mcp.server.fastmcp import Context
 import json
 import os
 import anthropic
+
 
 class StrategyParser:
     def __init__(self):
@@ -11,13 +11,9 @@ class StrategyParser:
             api_key=os.environ.get("ANTHROPIC_API_KEY")
         )
 
-    def parse_prompt(self, prompt: str, ctx: Context = None) -> Dict[str, Any]:
+    def parse_prompt(self, prompt: str) -> Dict[str, Any]:
         """
         Parse a natural language prompt into strategy parameters using LLM capabilities
-        
-        Example prompt: "Create a strategy with 5 tick duration, $10 stake, 
-        profit target of $100 and stop loss of $50"
-        
         Returns a dict of parameters for StrategyGenerator
         """
         # Default parameters
@@ -39,23 +35,29 @@ class StrategyParser:
                 max_tokens=1000,
                 messages=[{
                     "role": "user",
-                    "content": f"""Extract the trading parameters from this prompt: {prompt}
-Please respond with ONLY a JSON object in this format:
-{{
-    "duration": <number of ticks>,
-    "stake": <stake amount in dollars>,
-    "initial_stake": <stake amount in dollars>,
-    "profit_threshold": <profit target in dollars>,
-    "loss_threshold": <stop loss in dollars>
-}}"""
+                    "content": f"""What are the trading parameters in this sentence? '{prompt}'
+                    Give the output in json format (exclude those keys which are not found):
+                        {{
+                            "duration": 1,
+                            "initial_stake": 1,
+                            "profit_threshold": 1000,
+                            "loss_threshold": 500,
+                            "market": "synthetic_index",
+                            "submarket": "random_index",
+                            "symbol": "1HZ10V"
+                        }}
+                    Do not reply anything other than json. """
                 }]
             )
             
             # Parse the JSON response
-            extracted = json.loads(response.content)
+            # print(response.content[0].text)
+            extracted = json.loads(response.content[0].text)
             # Update defaults with extracted parameters
             params = defaults.copy()
             params.update(extracted)
+            # print("extracted", extracted)
+            # print("params   ", params)
             return params
             
         except Exception as e:
@@ -64,8 +66,7 @@ Please respond with ONLY a JSON object in this format:
 
     def validate_parameters(self, params: Dict[str, Any]) -> bool:
         """Validate the extracted parameters"""
-        required = ["duration", "stake", "initial_stake", 
-                   "profit_threshold", "loss_threshold"]
+        required = ["duration", "stake", "profit_threshold", "loss_threshold"]
                    
         return all(key in params for key in required) and \
                all(isinstance(params[key], (int, float)) for key in required)

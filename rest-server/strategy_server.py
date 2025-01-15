@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import anthropic
 from mcp.server.fastmcp import FastMCP, Context
 from strategy_generator import StrategyGenerator
 from strategy_parser import StrategyParser
@@ -12,30 +11,12 @@ mcp = FastMCP("Strategy")
 generator = StrategyGenerator()
 parser = StrategyParser()
 
-# Initialize Anthropic client
-client = anthropic.Anthropic(
-    api_key=os.environ.get("ANTHROPIC_API_KEY")
-)
-
-@mcp.prompt()
-def strategy_prompt(message: str, ctx: Context) -> str:
-    """Handle strategy-related prompts"""
-    response = client.messages.create(
-        model="claude-3-opus-20240229",
-        max_tokens=1000,
-        messages=[{
-            "role": "user",
-            "content": message
-        }]
-    )
-    return response.content
-
 @mcp.tool()
-def generate_strategy(prompt: str, ctx: Context) -> str:
+def generate_strategy(prompt: str, ctx: Context):
     """Generate a trading strategy from description"""
     try:
         # Parse parameters from prompt using context
-        params = parser.parse_prompt(prompt, ctx)
+        params = parser.parse_prompt(prompt)
         
         if not parser.validate_parameters(params):
             error_msg = "Could not extract valid parameters from prompt"
