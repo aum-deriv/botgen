@@ -2,13 +2,15 @@ from typing import Dict, Any
 import json
 import os
 import anthropic
+from dotenv import load_dotenv
 
+load_dotenv()
 
 class StrategyParser:
     def __init__(self):
         """Initialize Anthropic client"""
         self.client = anthropic.Anthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY")
+            api_key=os.getenv("ANTHROPIC_API_KEY")
         )
 
     def parse_prompt(self, prompt: str) -> Dict[str, Any]:
@@ -31,7 +33,7 @@ class StrategyParser:
         try:
             # Get JSON response from Claude
             response = self.client.messages.create(
-                model="claude-3-opus-20240229",
+                model="claude-3-5-sonnet-20241022",
                 max_tokens=1000,
                 messages=[{
                     "role": "user",
@@ -51,7 +53,7 @@ class StrategyParser:
             )
             
             # Parse the JSON response
-            # print(response.content[0].text)
+            print(response.content[0].text)
             extracted = json.loads(response.content[0].text)
             # Update defaults with extracted parameters
             params = defaults.copy()
